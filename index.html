@@ -130,6 +130,26 @@
                         <h3 class="text-3xl font-bold text-white" id="dash-net">0 ฿</h3>
                     </div>
                 </div>
+
+                <!-- เพิ่มตารางประวัติย้อนหลัง -->
+                <div class="mt-8 pt-4">
+                    <h3 class="text-xl font-bold dark:text-white mb-4">ประวัติย้อนหลัง (สรุปรายเดือน)</h3>
+                    <div class="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-x-auto">
+                        <table class="w-full text-left border-collapse whitespace-nowrap">
+                            <thead>
+                                <tr class="bg-slate-50 dark:bg-slate-700/50 text-slate-500 dark:text-slate-300 text-sm border-b border-slate-200 dark:border-slate-700">
+                                    <th class="p-4 font-medium">ประจำเดือน</th>
+                                    <th class="p-4 font-medium text-right">รายรับรวม</th>
+                                    <th class="p-4 font-medium text-right">รายจ่ายรวม</th>
+                                    <th class="p-4 font-medium text-right">คงเหลือสุทธิ</th>
+                                </tr>
+                            </thead>
+                            <tbody id="historyTableBody" class="divide-y divide-slate-200 dark:divide-slate-700 text-sm">
+                                <!-- ข้อมูลย้อนหลังจะแทรกตรงนี้ -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
             </div>
 
             <!-- 2. Income View -->
@@ -224,7 +244,6 @@
                             </div>
                             <div class="w-full md:w-1/4">
                                 <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">จำนวนเงิน (บาท)</label>
-                                <!-- เพิ่ม step="0.01" เพื่อให้ใส่ทศนิยมได้ -->
                                 <input type="number" id="exp-amount" step="0.01" required class="w-full px-4 py-2.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 dark:text-white outline-none focus:ring-2 focus:ring-rose-500">
                             </div>
                         </div>
@@ -252,12 +271,21 @@
 
             <!-- 4. Print Bills View -->
             <div id="view-print" class="space-y-6 hidden print:space-y-0 print:block w-full">
-                <div class="print-hidden flex justify-between items-center mb-6">
+                <div class="print-hidden flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
                     <h2 class="text-2xl font-bold dark:text-white">พิมพ์ใบแจ้งหนี้</h2>
-                    <button onclick="window.print()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-6 py-2.5 rounded-xl font-medium shadow-md transition-all flex items-center gap-2">
-                        <i class="fa-solid fa-print"></i> พิมพ์ / Save PDF
-                    </button>
+                    
+                    <!-- ส่วนเลือกเดือนสำหรับหน้าปริ้น -->
+                    <div class="flex flex-wrap items-center gap-3">
+                        <div class="flex items-center gap-3 bg-white dark:bg-slate-800 px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm">
+                            <label class="text-sm font-medium text-slate-600 dark:text-slate-300"><i class="fa-regular fa-calendar-check mr-1"></i> เลือกเดือนที่พิมพ์:</label>
+                            <input type="month" id="print-month-filter" class="px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-slate-700 dark:text-white outline-none focus:ring-2 focus:ring-emerald-500 cursor-pointer">
+                        </div>
+                        <button onclick="window.print()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-6 py-2.5 rounded-xl font-medium shadow-md transition-all flex items-center gap-2">
+                            <i class="fa-solid fa-print"></i> พิมพ์ / Save PDF
+                        </button>
+                    </div>
                 </div>
+                
                 <div id="print-grid" class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <!-- บิลจะถูกแทรกที่นี่ -->
                 </div>
@@ -328,9 +356,11 @@
         const currentMonthStr = new Date().toISOString().slice(0, 7); 
         document.getElementById('inc-month').value = currentMonthStr;
         document.getElementById('dash-month-filter').value = currentMonthStr;
+        document.getElementById('print-month-filter').value = currentMonthStr;
         document.getElementById('exp-date').valueAsDate = new Date();
 
         document.getElementById('dash-month-filter').addEventListener('change', updateUI);
+        document.getElementById('print-month-filter').addEventListener('change', renderPrintView);
 
         const roomInput = document.getElementById('inc-room');
         const elecPrevInput = document.getElementById('inc-elec-prev');
@@ -397,7 +427,6 @@
                 alertMsg.classList.add('hidden'); 
             }
             const total = rent + water + (elecUnits * RATE_ELEC) + RATE_TRASH;
-            // ใส่การตั้งค่าให้แสดงทศนิยมสวยงาม
             document.getElementById('inc-total-preview').innerText = total.toLocaleString('th-TH', { minimumFractionDigits: 0, maximumFractionDigits: 2 }) + ' ฿';
         }
 
@@ -445,7 +474,6 @@
                 incomes.push(newRecord);
                 updateUI(); 
                 
-                // ล้างฟอร์ม
                 document.getElementById('inc-room').value = '';
                 document.getElementById('inc-rent').value = 1200;
                 document.getElementById('inc-water').value = '';
@@ -519,6 +547,50 @@
             }
         }
 
+        // สร้างตารางข้อมูลย้อนหลัง (Historical Data)
+        function renderHistoricalData() {
+            const historyMap = {};
+            
+            // รวมยอดรายรับ
+            incomes.forEach(inc => {
+                if(!historyMap[inc.month]) historyMap[inc.month] = { income: 0, expense: 0 };
+                historyMap[inc.month].income += inc.total;
+            });
+            
+            // รวมยอดรายจ่าย
+            expenses.forEach(exp => {
+                const expMonth = exp.date.substring(0, 7);
+                if(!historyMap[expMonth]) historyMap[expMonth] = { income: 0, expense: 0 };
+                historyMap[expMonth].expense += exp.amount;
+            });
+
+            // เรียงเดือนจากล่าสุดไปเก่าสุด
+            const sortedMonths = Object.keys(historyMap).sort((a,b) => b.localeCompare(a)); 
+            const historyTbody = document.getElementById('historyTableBody');
+            historyTbody.innerHTML = '';
+
+            if (sortedMonths.length === 0) {
+                historyTbody.innerHTML = '<tr><td colspan="4" class="p-6 text-center text-slate-500 dark:text-slate-400">ยังไม่มีข้อมูลย้อนหลัง</td></tr>';
+                return;
+            }
+
+            sortedMonths.forEach(month => {
+                const inc = historyMap[month].income;
+                const exp = historyMap[month].expense;
+                const net = inc - exp;
+                const netClass = net >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400';
+
+                historyTbody.innerHTML += `
+                    <tr class="hover:bg-slate-50 dark:hover:bg-slate-700/30 transition-colors dark:text-slate-200">
+                        <td class="p-4 font-semibold">${formatThaiMonth(month)}</td>
+                        <td class="p-4 text-right">${inc.toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ฿</td>
+                        <td class="p-4 text-right">${exp.toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ฿</td>
+                        <td class="p-4 text-right font-bold ${netClass}">${net.toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ฿</td>
+                    </tr>
+                `;
+            });
+        }
+
         // อัปเดต UI 
         function updateUI() {
             const dashFilterMonth = document.getElementById('dash-month-filter').value;
@@ -561,18 +633,26 @@
             document.getElementById('dash-expense').innerText = sumExpenseFiltered.toLocaleString('th-TH', { minimumFractionDigits: 0, maximumFractionDigits: 2 }) + ' ฿';
             document.getElementById('dash-net').innerText = (sumIncomeFiltered - sumExpenseFiltered).toLocaleString('th-TH', { minimumFractionDigits: 0, maximumFractionDigits: 2 }) + ' ฿';
             
+            // สร้างข้อมูลหน้าปริ้น และ อัปเดตตารางย้อนหลัง
             renderPrintView();
+            renderHistoricalData();
         }
 
+        // หน้าปริ้นท์ แยกฟิลเตอร์ตามเดือนที่เลือกในแท็บ "พิมพ์ใบแจ้งหนี้"
         function renderPrintView() {
+            const printMonthFilter = document.getElementById('print-month-filter').value;
             const printGrid = document.getElementById('print-grid');
             printGrid.innerHTML = '';
-            if(incomes.length === 0) {
-                printGrid.innerHTML = '<div class="col-span-full text-center py-20 text-slate-500 bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700">ยังไม่มีข้อมูลบิลในระบบ กรุณาออกบิลก่อน</div>';
+            
+            // กรองเฉพาะบิลของเดือนที่เลือก
+            const filteredIncomes = incomes.filter(i => i.month === printMonthFilter);
+
+            if(filteredIncomes.length === 0) {
+                printGrid.innerHTML = `<div class="col-span-full text-center py-20 text-slate-500 bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700">ไม่มีข้อมูลบิลในเดือน ${formatThaiMonth(printMonthFilter)}</div>`;
                 return;
             }
             
-            const sortedToPrint = [...incomes].sort((a, b) => a.room.localeCompare(b.room));
+            const sortedToPrint = [...filteredIncomes].sort((a, b) => a.room.localeCompare(b.room));
 
             sortedToPrint.forEach(item => {
                 printGrid.innerHTML += `

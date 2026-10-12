@@ -148,15 +148,15 @@
                             </div>
                             <div>
                                 <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">ค่าห้อง (บาท)</label>
-                                <input type="number" id="inc-rent" required value="1200" class="w-full px-4 py-2 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 dark:text-white outline-none focus:ring-2 focus:ring-indigo-500">
+                                <input type="number" id="inc-rent" step="0.01" required value="1200" class="w-full px-4 py-2 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 dark:text-white outline-none focus:ring-2 focus:ring-indigo-500">
                             </div>
                             <div>
                                 <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">ค่าน้ำ (เหมา/บาท)</label>
-                                <input type="number" id="inc-water" required class="w-full px-4 py-2 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 dark:text-white outline-none focus:ring-2 focus:ring-indigo-500" placeholder="เช่น 100">
+                                <input type="number" id="inc-water" step="0.01" required class="w-full px-4 py-2 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 dark:text-white outline-none focus:ring-2 focus:ring-indigo-500" placeholder="เช่น 100">
                             </div>
                             <div>
                                 <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">ค่าขยะ (บาท)</label>
-                                <input type="number" id="inc-trash" value="10" readonly class="w-full px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-100 dark:bg-slate-600 text-slate-500 outline-none cursor-not-allowed">
+                                <input type="number" id="inc-trash" step="0.01" value="10" readonly class="w-full px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-100 dark:bg-slate-600 text-slate-500 outline-none cursor-not-allowed">
                             </div>
                         </div>
                         
@@ -166,12 +166,12 @@
                                 <div class="grid grid-cols-2 gap-4">
                                     <div class="relative">
                                         <label class="block text-xs text-slate-500 mb-1">เลขมิเตอร์เดือนก่อน</label>
-                                        <input type="number" id="inc-elec-prev" required class="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 dark:text-white outline-none focus:ring-2 focus:ring-indigo-500 transition-all">
+                                        <input type="number" id="inc-elec-prev" step="0.01" required class="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 dark:text-white outline-none focus:ring-2 focus:ring-indigo-500 transition-all">
                                         <p id="meter-autofill-badge" class="text-emerald-500 text-[10px] font-medium absolute -bottom-4 left-0 hidden"><i class="fa-solid fa-bolt"></i> ดึงจากเดือนก่อน</p>
                                     </div>
                                     <div>
                                         <label class="block text-xs text-slate-500 mb-1">เลขมิเตอร์เดือนนี้</label>
-                                        <input type="number" id="inc-elec-curr" required class="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 dark:text-white outline-none focus:ring-2 focus:ring-indigo-500">
+                                        <input type="number" id="inc-elec-curr" step="0.01" required class="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 dark:text-white outline-none focus:ring-2 focus:ring-indigo-500">
                                     </div>
                                 </div>
                                 <p id="elec-alert" class="text-rose-500 text-xs mt-3 hidden">มิเตอร์เดือนนี้ต้องมากกว่าหรือเท่ากับเดือนก่อน</p>
@@ -224,7 +224,8 @@
                             </div>
                             <div class="w-full md:w-1/4">
                                 <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">จำนวนเงิน (บาท)</label>
-                                <input type="number" id="exp-amount" required class="w-full px-4 py-2.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 dark:text-white outline-none focus:ring-2 focus:ring-rose-500">
+                                <!-- เพิ่ม step="0.01" เพื่อให้ใส่ทศนิยมได้ -->
+                                <input type="number" id="exp-amount" step="0.01" required class="w-full px-4 py-2.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 dark:text-white outline-none focus:ring-2 focus:ring-rose-500">
                             </div>
                         </div>
                         <div class="flex justify-end pt-2">
@@ -396,7 +397,8 @@
                 alertMsg.classList.add('hidden'); 
             }
             const total = rent + water + (elecUnits * RATE_ELEC) + RATE_TRASH;
-            document.getElementById('inc-total-preview').innerText = total.toLocaleString() + ' ฿';
+            // ใส่การตั้งค่าให้แสดงทศนิยมสวยงาม
+            document.getElementById('inc-total-preview').innerText = total.toLocaleString('th-TH', { minimumFractionDigits: 0, maximumFractionDigits: 2 }) + ' ฿';
         }
 
         const expTypeSelect = document.getElementById('exp-type');
@@ -530,11 +532,11 @@
                     <tr class="dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700/30">
                         <td class="p-4 whitespace-nowrap text-slate-500 dark:text-slate-400">${formatThaiMonth(item.month)}</td>
                         <td class="p-4 font-semibold text-slate-800 dark:text-slate-100">${item.room}</td>
-                        <td class="p-4">${item.rent.toLocaleString()}</td>
-                        <td class="p-4">${item.water.toLocaleString()}</td>
-                        <td class="p-4">${item.elec.toLocaleString()}</td>
-                        <td class="p-4">${item.trash.toLocaleString()}</td>
-                        <td class="p-4 font-bold text-indigo-600 dark:text-indigo-400">${item.total.toLocaleString()}</td>
+                        <td class="p-4">${item.rent.toLocaleString('th-TH', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}</td>
+                        <td class="p-4">${item.water.toLocaleString('th-TH', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}</td>
+                        <td class="p-4">${item.elec.toLocaleString('th-TH', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}</td>
+                        <td class="p-4">${item.trash.toLocaleString('th-TH', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}</td>
+                        <td class="p-4 font-bold text-indigo-600 dark:text-indigo-400">${item.total.toLocaleString('th-TH', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}</td>
                         <td class="p-4 text-center"><button onclick="deleteIncome('${item.id}')" class="text-rose-500"><i class="fa-solid fa-trash"></i></button></td>
                     </tr>`;
             });
@@ -550,14 +552,14 @@
                     <tr class="dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700/30">
                         <td class="p-4">${formatDateToDisplay(item.date)}</td>
                         <td class="p-4">${item.desc}</td>
-                        <td class="p-4 text-right font-medium">${item.amount.toLocaleString()}</td>
+                        <td class="p-4 text-right font-medium">${item.amount.toLocaleString('th-TH', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}</td>
                         <td class="p-4 text-center"><button onclick="deleteExpense('${item.id}')" class="text-rose-500"><i class="fa-solid fa-trash"></i></button></td>
                     </tr>`;
             });
 
-            document.getElementById('dash-income').innerText = sumIncomeFiltered.toLocaleString() + ' ฿';
-            document.getElementById('dash-expense').innerText = sumExpenseFiltered.toLocaleString() + ' ฿';
-            document.getElementById('dash-net').innerText = (sumIncomeFiltered - sumExpenseFiltered).toLocaleString() + ' ฿';
+            document.getElementById('dash-income').innerText = sumIncomeFiltered.toLocaleString('th-TH', { minimumFractionDigits: 0, maximumFractionDigits: 2 }) + ' ฿';
+            document.getElementById('dash-expense').innerText = sumExpenseFiltered.toLocaleString('th-TH', { minimumFractionDigits: 0, maximumFractionDigits: 2 }) + ' ฿';
+            document.getElementById('dash-net').innerText = (sumIncomeFiltered - sumExpenseFiltered).toLocaleString('th-TH', { minimumFractionDigits: 0, maximumFractionDigits: 2 }) + ' ฿';
             
             renderPrintView();
         }
@@ -587,25 +589,25 @@
                             </div>
                             
                             <div class="space-y-3 text-slate-700 print-text-black dark:text-slate-300 text-sm font-medium">
-                                <div class="flex justify-between"><span>ค่าเช่าห้อง</span> <span>${item.rent.toLocaleString()} บาท</span></div>
-                                <div class="flex justify-between"><span>ค่าน้ำประปา (เหมาจ่าย)</span> <span>${item.water.toLocaleString()} บาท</span></div>
+                                <div class="flex justify-between"><span>ค่าเช่าห้อง</span> <span>${item.rent.toLocaleString('th-TH', { minimumFractionDigits: 0, maximumFractionDigits: 2 })} บาท</span></div>
+                                <div class="flex justify-between"><span>ค่าน้ำประปา (เหมาจ่าย)</span> <span>${item.water.toLocaleString('th-TH', { minimumFractionDigits: 0, maximumFractionDigits: 2 })} บาท</span></div>
                                 <div class="flex justify-between items-start">
                                     <div>
                                         <span>ค่าไฟฟ้า (หน่วยละ ${RATE_ELEC} บ.)</span><br>
                                         <span class="text-xs text-slate-500 print-text-black dark:text-slate-400 font-normal">
-                                            มิเตอร์: ${item.ePrev} -> ${item.eCurr} (ใช้ ${item.elecUnits} หน่วย)
+                                            มิเตอร์: ${item.ePrev} -> ${item.eCurr} (ใช้ ${item.elecUnits.toLocaleString('th-TH', { minimumFractionDigits: 0, maximumFractionDigits: 2 })} หน่วย)
                                         </span>
                                     </div>
-                                    <span class="pt-1">${item.elec.toLocaleString()} บาท</span>
+                                    <span class="pt-1">${item.elec.toLocaleString('th-TH', { minimumFractionDigits: 0, maximumFractionDigits: 2 })} บาท</span>
                                 </div>
-                                <div class="flex justify-between"><span>ค่าส่วนกลาง/ขยะ</span> <span>${item.trash.toLocaleString()} บาท</span></div>
+                                <div class="flex justify-between"><span>ค่าส่วนกลาง/ขยะ</span> <span>${item.trash.toLocaleString('th-TH', { minimumFractionDigits: 0, maximumFractionDigits: 2 })} บาท</span></div>
                             </div>
                         </div>
                         
                         <div class="mt-4 pt-3 border-t-2 border-slate-800 print:border-black">
                             <div class="flex justify-between items-end mb-1">
                                 <span class="text-lg font-bold print-text-black text-slate-900 dark:text-white">รวมสุทธิ (Total)</span>
-                                <span class="text-2xl font-black text-rose-600 print-text-black dark:text-rose-400">${item.total.toLocaleString()} ฿</span>
+                                <span class="text-2xl font-black text-rose-600 print-text-black dark:text-rose-400">${item.total.toLocaleString('th-TH', { minimumFractionDigits: 0, maximumFractionDigits: 2 })} ฿</span>
                             </div>
                             <p class="text-[11px] text-center text-slate-500 mt-2 print-text-black dark:text-slate-400">
                                 * กรุณาชำระเงินภายในวันที่ 5 ของเดือนถัดไป *

@@ -1,0 +1,569 @@
+<!DOCTYPE html>
+<html lang="th" class="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ระบบจัดการหอพัก</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['Prompt', 'sans-serif'], }
+                }
+            }
+        }
+    </script>
+    <!-- Google Fonts: Prompt -->
+    <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700;900&display=swap" rel="stylesheet">
+    <!-- FontAwesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        body { font-family: 'Prompt', sans-serif; }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        
+        /* ตั้งค่าหน้ากระดาษพิมพ์ (A4) */
+        @media print {
+            @page { size: A4; margin: 10mm; }
+            body { 
+                background: white !important; 
+                color: black !important;
+                -webkit-print-color-adjust: exact; 
+                print-color-adjust: exact; 
+            }
+            .print-hidden { display: none !important; }
+            #print-grid { 
+                display: grid !important; 
+                grid-template-columns: 1fr 1fr !important; 
+                gap: 5mm !important; 
+            }
+            .bill-wrapper { 
+                height: 135mm; 
+                border: 2px solid #334155 !important;
+                page-break-inside: avoid;
+                box-shadow: none !important;
+            }
+            .bill-wrapper:nth-child(4n) {
+                page-break-after: always;
+            }
+            .print-text-black { color: #000 !important; }
+        }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 dark:bg-slate-900 dark:text-slate-200 transition-colors duration-300">
+
+    <!-- Navbar -->
+    <nav class="print-hidden bg-white dark:bg-slate-800 shadow-sm border-b border-slate-200 dark:border-slate-700 sticky top-0 z-10 transition-colors duration-300">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16 items-center">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center text-white shadow-lg shadow-indigo-600/30">
+                        <i class="fa-solid fa-building"></i>
+                    </div>
+                    <span class="text-xl font-semibold text-slate-900 dark:text-white">Dorm<span class="text-indigo-600 dark:text-indigo-400">Manager</span></span>
+                </div>
+                <div class="flex items-center gap-4">
+                    <button id="themeToggle" class="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
+                        <i id="themeIcon" class="fa-solid fa-moon text-slate-600 dark:text-slate-300 text-lg"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 flex flex-col md:flex-row gap-6 print:m-0 print:p-0">
+        
+        <!-- Sidebar Menu -->
+        <aside class="print-hidden w-full md:w-64 shrink-0">
+            <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 p-4 space-y-2 sticky top-24 transition-colors duration-300">
+                <button onclick="switchTab('dashboard')" id="tab-dashboard" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-left font-medium transition-all bg-indigo-50 text-indigo-700 dark:bg-indigo-500/20 dark:text-indigo-300">
+                    <i class="fa-solid fa-chart-pie w-5"></i> ภาพรวม (Dashboard)
+                </button>
+                <button onclick="switchTab('income')" id="tab-income" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-left font-medium text-slate-600 hover:bg-slate-50 dark:text-slate-400 dark:hover:bg-slate-700 transition-all">
+                    <i class="fa-solid fa-file-invoice-dollar w-5"></i> บันทึกรายรับ (ออกบิล)
+                </button>
+                <button onclick="switchTab('expense')" id="tab-expense" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-left font-medium text-slate-600 hover:bg-slate-50 dark:text-slate-400 dark:hover:bg-slate-700 transition-all">
+                    <i class="fa-solid fa-money-bill-transfer w-5"></i> บันทึกรายจ่าย
+                </button>
+                <div class="border-t border-slate-200 dark:border-slate-700 my-2"></div>
+                <button onclick="switchTab('print')" id="tab-print" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-left font-medium text-emerald-600 hover:bg-emerald-50 dark:text-emerald-400 dark:hover:bg-emerald-900/30 transition-all">
+                    <i class="fa-solid fa-print w-5"></i> พิมพ์บิลใบแจ้งหนี้
+                </button>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="flex-1 w-full overflow-hidden print:w-full print:overflow-visible">
+            
+            <!-- 1. Dashboard View -->
+            <div id="view-dashboard" class="space-y-6 block print-hidden">
+                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                    <h2 class="text-2xl font-bold dark:text-white">ภาพรวมระบบหอพัก</h2>
+                    <div class="flex items-center gap-3 bg-white dark:bg-slate-800 px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm">
+                        <label class="text-sm font-medium text-slate-600 dark:text-slate-300"><i class="fa-regular fa-calendar-check mr-1"></i> เดือนที่แสดง:</label>
+                        <input type="month" id="dash-month-filter" class="px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-slate-700 dark:text-white outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer">
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div class="bg-white dark:bg-slate-800 p-6 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm relative overflow-hidden">
+                        <div class="absolute -right-4 -top-4 w-24 h-24 bg-emerald-50 dark:bg-emerald-500/10 rounded-full blur-2xl"></div>
+                        <p class="text-slate-500 dark:text-slate-400 text-sm font-medium mb-1">รายรับ (เดือนที่เลือก)</p>
+                        <h3 class="text-3xl font-bold text-slate-800 dark:text-white" id="dash-income">0 ฿</h3>
+                    </div>
+                    <div class="bg-white dark:bg-slate-800 p-6 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm relative overflow-hidden">
+                        <div class="absolute -right-4 -top-4 w-24 h-24 bg-rose-50 dark:bg-rose-500/10 rounded-full blur-2xl"></div>
+                        <p class="text-slate-500 dark:text-slate-400 text-sm font-medium mb-1">รายจ่าย (เดือนที่เลือก)</p>
+                        <h3 class="text-3xl font-bold text-slate-800 dark:text-white" id="dash-expense">0 ฿</h3>
+                    </div>
+                    <div class="p-6 rounded-2xl shadow-sm relative overflow-hidden bg-gradient-to-br from-indigo-600 to-indigo-800 text-white">
+                        <p class="text-indigo-100 text-sm font-medium mb-1">คงเหลือสุทธิ (เดือนที่เลือก)</p>
+                        <h3 class="text-3xl font-bold text-white" id="dash-net">0 ฿</h3>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 2. Income View -->
+            <div id="view-income" class="space-y-6 hidden print-hidden">
+                <h2 class="text-2xl font-bold dark:text-white">บันทึกรายรับ / ออกบิล</h2>
+                <div class="bg-white dark:bg-slate-800 p-6 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm">
+                    <form id="incomeForm" class="space-y-4">
+                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">ประจำเดือน</label>
+                                <input type="month" id="inc-month" required class="w-full px-4 py-2 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 dark:text-white outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">ห้องที่</label>
+                                <input type="text" id="inc-room" required class="w-full px-4 py-2 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 dark:text-white outline-none focus:ring-2 focus:ring-indigo-500" placeholder="เช่น 101">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">ค่าห้อง (บาท)</label>
+                                <input type="number" id="inc-rent" required value="1200" class="w-full px-4 py-2 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 dark:text-white outline-none focus:ring-2 focus:ring-indigo-500">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">ค่าน้ำ (เหมา/บาท)</label>
+                                <input type="number" id="inc-water" required class="w-full px-4 py-2 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 dark:text-white outline-none focus:ring-2 focus:ring-indigo-500" placeholder="เช่น 100">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">ค่าขยะ (บาท)</label>
+                                <input type="number" id="inc-trash" value="10" readonly class="w-full px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-100 dark:bg-slate-600 text-slate-500 outline-none cursor-not-allowed">
+                            </div>
+                        </div>
+                        
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+                            <div class="p-4 bg-slate-50 dark:bg-slate-700/50 rounded-xl border border-slate-200 dark:border-slate-600 relative">
+                                <p class="text-sm font-semibold mb-3 dark:text-slate-200">คำนวณค่าไฟ (หน่วยละ 9 บาท)</p>
+                                <div class="grid grid-cols-2 gap-4">
+                                    <div class="relative">
+                                        <label class="block text-xs text-slate-500 mb-1">เลขมิเตอร์เดือนก่อน</label>
+                                        <input type="number" id="inc-elec-prev" required class="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 dark:text-white outline-none focus:ring-2 focus:ring-indigo-500 transition-all">
+                                        <p id="meter-autofill-badge" class="text-emerald-500 text-[10px] font-medium absolute -bottom-4 left-0 hidden"><i class="fa-solid fa-bolt"></i> ดึงจากเดือนก่อน</p>
+                                    </div>
+                                    <div>
+                                        <label class="block text-xs text-slate-500 mb-1">เลขมิเตอร์เดือนนี้</label>
+                                        <input type="number" id="inc-elec-curr" required class="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 dark:text-white outline-none focus:ring-2 focus:ring-indigo-500">
+                                    </div>
+                                </div>
+                                <p id="elec-alert" class="text-rose-500 text-xs mt-3 hidden">มิเตอร์เดือนนี้ต้องมากกว่าหรือเท่ากับเดือนก่อน</p>
+                            </div>
+                            <div class="flex flex-col justify-center bg-indigo-50 dark:bg-indigo-500/10 border border-indigo-100 rounded-xl p-4 text-center">
+                                <p class="text-slate-500 dark:text-indigo-300 text-sm font-medium">รวมสุทธิที่ต้องชำระ</p>
+                                <div class="text-3xl font-bold text-indigo-700 dark:text-indigo-400 mt-1" id="inc-total-preview">0 ฿</div>
+                            </div>
+                        </div>
+                        <div class="flex justify-end pt-4">
+                            <button type="submit" class="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-2.5 rounded-xl font-medium shadow-md transition-all">
+                                <i class="fa-solid fa-check mr-2"></i> บันทึกบิล
+                            </button>
+                        </div>
+                    </form>
+                </div>
+                
+                <div class="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-x-auto">
+                    <table class="w-full text-left border-collapse whitespace-nowrap">
+                        <thead>
+                            <tr class="bg-slate-50 dark:bg-slate-700/50 text-slate-500 dark:text-slate-300 text-sm border-b">
+                                <th class="p-4">ประจำเดือน</th><th class="p-4">ห้อง</th><th class="p-4">ค่าห้อง</th><th class="p-4">ค่าน้ำ</th><th class="p-4">ค่าไฟ</th><th class="p-4">ค่าขยะ</th><th class="p-4">ยอดรวม</th><th class="p-4 text-center">ลบ</th>
+                            </tr>
+                        </thead>
+                        <tbody id="incomeTableBody" class="divide-y divide-slate-200 dark:divide-slate-700 text-sm"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- 3. Expenses View -->
+            <div id="view-expense" class="space-y-6 hidden print-hidden">
+                <h2 class="text-2xl font-bold dark:text-white">บันทึกรายจ่าย</h2>
+                <div class="bg-white dark:bg-slate-800 p-6 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm">
+                    <form id="expenseForm" class="flex flex-col gap-4">
+                        <div class="flex flex-col md:flex-row gap-4 items-end">
+                            <div class="w-full md:w-1/4">
+                                <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">วันที่ชำระ</label>
+                                <input type="date" id="exp-date" required class="w-full px-4 py-2.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 dark:text-white outline-none focus:ring-2 focus:ring-rose-500 cursor-pointer">
+                            </div>
+                            <div class="w-full md:w-2/4 flex flex-col gap-2">
+                                <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">รายการค่าใช้จ่าย</label>
+                                <select id="exp-type" required class="w-full px-4 py-2.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 dark:text-white outline-none focus:ring-2 focus:ring-rose-500">
+                                    <option value="" disabled selected>เลือกรายการ</option>
+                                    <option value="ค่าไฟส่วนกลาง">ค่าไฟส่วนกลาง</option>
+                                    <option value="ค่าน้ำส่วนกลาง">ค่าน้ำส่วนกลาง</option>
+                                    <option value="ค่าอินเตอร์เน็ต">ค่าอินเตอร์เน็ต</option>
+                                    <option value="อื่นๆ">อื่นๆ (ระบุเอง)</option>
+                                </select>
+                                <input type="text" id="exp-custom" placeholder="โปรดระบุรายการ..." class="hidden w-full px-4 py-2.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 dark:text-white outline-none transition-all">
+                            </div>
+                            <div class="w-full md:w-1/4">
+                                <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">จำนวนเงิน (บาท)</label>
+                                <input type="number" id="exp-amount" required class="w-full px-4 py-2.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 dark:text-white outline-none focus:ring-2 focus:ring-rose-500">
+                            </div>
+                        </div>
+                        <div class="flex justify-end pt-2">
+                            <button type="submit" class="bg-rose-600 hover:bg-rose-700 text-white px-8 py-2.5 rounded-xl font-medium shadow-md transition-all">
+                                บันทึกรายจ่าย
+                            </button>
+                        </div>
+                    </form>
+                </div>
+                <div class="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-x-auto">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="bg-slate-50 dark:bg-slate-700/50 text-slate-500 dark:text-slate-300 text-sm border-b">
+                                <th class="p-4">วันที่ชำระ</th>
+                                <th class="p-4">รายการ</th>
+                                <th class="p-4 text-right">จำนวนเงิน (บาท)</th>
+                                <th class="p-4 text-center">ลบ</th>
+                            </tr>
+                        </thead>
+                        <tbody id="expenseTableBody" class="divide-y divide-slate-200 dark:divide-slate-700 text-sm"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- 4. Print Bills View -->
+            <div id="view-print" class="space-y-6 hidden print:space-y-0 print:block w-full">
+                <div class="print-hidden flex justify-between items-center mb-6">
+                    <h2 class="text-2xl font-bold dark:text-white">พิมพ์ใบแจ้งหนี้</h2>
+                    <button onclick="window.print()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-6 py-2.5 rounded-xl font-medium shadow-md transition-all flex items-center gap-2">
+                        <i class="fa-solid fa-print"></i> พิมพ์ / Save PDF
+                    </button>
+                </div>
+                <div id="print-grid" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <!-- บิลจะถูกแทรกที่นี่ -->
+                </div>
+            </div>
+
+        </main>
+    </div>
+
+    <!-- Script Logic -->
+    <script>
+        const RATE_ELEC = 9;
+        const RATE_TRASH = 10;
+        let incomes = [];
+        let expenses = [];
+
+        // 1. จัดการข้อมูล Local Storage
+        function loadData() {
+            try {
+                const savedIncomes = localStorage.getItem('dorm_incomes');
+                const savedExpenses = localStorage.getItem('dorm_expenses');
+                if (savedIncomes) incomes = JSON.parse(savedIncomes);
+                if (savedExpenses) expenses = JSON.parse(savedExpenses);
+            } catch (e) {
+                console.error("โหลดข้อมูลล้มเหลว", e);
+            }
+        }
+        function saveData() {
+            localStorage.setItem('dorm_incomes', JSON.stringify(incomes));
+            localStorage.setItem('dorm_expenses', JSON.stringify(expenses));
+        }
+
+        // แปลง YYYY-MM เป็นไทย
+        function formatThaiMonth(yearMonth) {
+            if(!yearMonth) return "";
+            const [year, month] = yearMonth.split('-');
+            const monthNames = ["มกราคม", "กุมภาพันธ์", "มีนาคม", "เมษายน", "พฤษภาคม", "มิถุนายน", "กรกฎาคม", "สิงหาคม", "กันยายน", "ตุลาคม", "พฤศจิกายน", "ธันวาคม"];
+            const thYear = parseInt(year) + 543;
+            return `${monthNames[parseInt(month) - 1]} ${thYear}`;
+        }
+
+        // แปลงวันที่จาก YYYY-MM-DD เป็น DD-MM-YYYY
+        function formatDateToDisplay(dateString) {
+            if(!dateString) return "";
+            const [year, month, day] = dateString.split('-');
+            return `${day}-${month}-${year}`;
+        }
+
+        // 2. การตั้งค่าค่าเริ่มต้น (เดือนปัจจุบัน)
+        const currentMonthStr = new Date().toISOString().slice(0, 7); 
+        document.getElementById('inc-month').value = currentMonthStr;
+        document.getElementById('dash-month-filter').value = currentMonthStr;
+        document.getElementById('exp-date').valueAsDate = new Date();
+
+        document.getElementById('dash-month-filter').addEventListener('change', updateUI);
+
+        // 3. ระบบ Auto-fill เลขมิเตอร์เก่า
+        const roomInput = document.getElementById('inc-room');
+        const elecPrevInput = document.getElementById('inc-elec-prev');
+        const autoFillBadge = document.getElementById('meter-autofill-badge');
+
+        roomInput.addEventListener('input', function() {
+            const roomNo = this.value.trim();
+            autoFillBadge.classList.add('hidden'); 
+            
+            if (roomNo !== '') {
+                const roomHistory = incomes.filter(i => i.room === roomNo);
+                if (roomHistory.length > 0) {
+                    roomHistory.sort((a, b) => b.id - a.id);
+                    elecPrevInput.value = roomHistory[0].eCurr;
+                    
+                    autoFillBadge.classList.remove('hidden');
+                    elecPrevInput.classList.add('border-emerald-500', 'bg-emerald-50', 'dark:bg-emerald-900/20');
+                    setTimeout(() => {
+                        elecPrevInput.classList.remove('border-emerald-500', 'bg-emerald-50', 'dark:bg-emerald-900/20');
+                    }, 2000);
+                    calculatePreview();
+                }
+            }
+        });
+
+        // Toggle ธีมมืด/สว่าง
+        const themeToggle = document.getElementById('themeToggle');
+        const themeIcon = document.getElementById('themeIcon');
+        const htmlElement = document.documentElement;
+
+        themeToggle.addEventListener('click', () => {
+            htmlElement.classList.toggle('dark');
+            if (htmlElement.classList.contains('dark')) {
+                themeIcon.classList.replace('fa-moon', 'fa-sun');
+            } else {
+                themeIcon.classList.replace('fa-sun', 'fa-moon');
+            }
+        });
+
+        // ระบบสลับแท็บ
+        function switchTab(tabId) {
+            ['dashboard', 'income', 'expense', 'print'].forEach(id => {
+                document.getElementById(`view-${id}`).classList.add('hidden');
+                document.getElementById(`tab-${id}`).className = `w-full flex items-center gap-3 px-4 py-3 rounded-xl text-left font-medium text-slate-600 hover:bg-slate-50 dark:text-slate-400 dark:hover:bg-slate-700 transition-all ${id==='print' ? 'text-emerald-600 dark:text-emerald-400' : ''}`;
+            });
+            document.getElementById(`view-${tabId}`).classList.remove('hidden');
+            
+            if (tabId === 'print') {
+                document.getElementById(`tab-${tabId}`).className = "w-full flex items-center gap-3 px-4 py-3 rounded-xl text-left font-medium transition-all bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300";
+            } else {
+                document.getElementById(`tab-${tabId}`).className = "w-full flex items-center gap-3 px-4 py-3 rounded-xl text-left font-medium transition-all bg-indigo-50 text-indigo-700 dark:bg-indigo-500/20 dark:text-indigo-300";
+            }
+        }
+
+        // ระบบคำนวณแบบ Realtime หน้าออกบิล
+        ['inc-rent', 'inc-water', 'inc-elec-prev', 'inc-elec-curr'].forEach(id => {
+            document.getElementById(id).addEventListener('input', calculatePreview);
+        });
+
+        function calculatePreview() {
+            const rent = parseFloat(document.getElementById('inc-rent').value) || 0;
+            const water = parseFloat(document.getElementById('inc-water').value) || 0;
+            const ePrev = parseFloat(document.getElementById('inc-elec-prev').value) || 0;
+            const eCurr = parseFloat(document.getElementById('inc-elec-curr').value) || 0;
+            const alertMsg = document.getElementById('elec-alert');
+            
+            let elecUnits = eCurr - ePrev;
+            if (elecUnits < 0 && document.getElementById('inc-elec-curr').value !== "") { 
+                alertMsg.classList.remove('hidden'); elecUnits = 0; 
+            } else { 
+                alertMsg.classList.add('hidden'); 
+            }
+
+            const total = rent + water + (elecUnits * RATE_ELEC) + RATE_TRASH;
+            document.getElementById('inc-total-preview').innerText = total.toLocaleString() + ' ฿';
+        }
+
+        // จัดการ Dropdown "อื่นๆ" หน้ารายจ่าย
+        const expTypeSelect = document.getElementById('exp-type');
+        const expCustomInput = document.getElementById('exp-custom');
+        expTypeSelect.addEventListener('change', (e) => {
+            if (e.target.value === 'อื่นๆ') {
+                expCustomInput.classList.remove('hidden');
+                expCustomInput.setAttribute('required', 'true');
+            } else {
+                expCustomInput.classList.add('hidden');
+                expCustomInput.removeAttribute('required');
+            }
+        });
+
+        // 4. Submit ข้อมูลรายรับ
+        document.getElementById('incomeForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const ePrev = parseFloat(document.getElementById('inc-elec-prev').value);
+            const eCurr = parseFloat(document.getElementById('inc-elec-curr').value);
+            if (eCurr < ePrev) { alert('ข้อมูลผิดพลาด: มิเตอร์ปัจจุบันต้องมากกว่าเดือนก่อน'); return; }
+
+            const elecTotal = (eCurr - ePrev) * RATE_ELEC;
+            const rent = parseFloat(document.getElementById('inc-rent').value);
+            const water = parseFloat(document.getElementById('inc-water').value);
+            const monthStr = document.getElementById('inc-month').value; 
+
+            incomes.push({
+                id: Date.now(),
+                month: monthStr,
+                room: document.getElementById('inc-room').value,
+                rent: rent, water: water, ePrev: ePrev, eCurr: eCurr, elecUnits: eCurr - ePrev,
+                elec: elecTotal, trash: RATE_TRASH,
+                total: rent + water + elecTotal + RATE_TRASH
+            });
+            
+            updateUI(); 
+            document.getElementById('inc-room').value = '';
+            document.getElementById('inc-rent').value = 1200;
+            document.getElementById('inc-water').value = '';
+            document.getElementById('inc-elec-prev').value = '';
+            document.getElementById('inc-elec-curr').value = '';
+            document.getElementById('inc-total-preview').innerText = '0 ฿';
+            autoFillBadge.classList.add('hidden');
+            document.getElementById('inc-room').focus();
+        });
+
+        // 5. Submit ข้อมูลรายจ่าย
+        document.getElementById('expenseForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const selectedType = expTypeSelect.value;
+            const finalDesc = selectedType === 'อื่นๆ' ? expCustomInput.value : selectedType;
+
+            expenses.push({
+                id: Date.now(),
+                date: document.getElementById('exp-date').value,
+                desc: finalDesc,
+                amount: parseFloat(document.getElementById('exp-amount').value)
+            });
+            
+            updateUI(); 
+            this.reset();
+            expCustomInput.classList.add('hidden');
+            document.getElementById('exp-date').valueAsDate = new Date();
+        });
+
+        function deleteIncome(id) { incomes = incomes.filter(i => i.id !== id); updateUI(); }
+        function deleteExpense(id) { expenses = expenses.filter(i => i.id !== id); updateUI(); }
+
+        // 6. อัปเดต UI หลักและคำนวณแยกตามเดือน
+        function updateUI() {
+            saveData(); 
+            
+            const dashFilterMonth = document.getElementById('dash-month-filter').value;
+
+            const incTbody = document.getElementById('incomeTableBody'); incTbody.innerHTML = '';
+            let sumIncomeFiltered = 0;
+            
+            const sortedIncomes = [...incomes].sort((a, b) => b.id - a.id);
+            sortedIncomes.forEach(item => {
+                if (item.month === dashFilterMonth) {
+                    sumIncomeFiltered += item.total;
+                }
+                
+                incTbody.innerHTML += `
+                    <tr class="dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700/30">
+                        <td class="p-4 whitespace-nowrap text-slate-500 dark:text-slate-400">${formatThaiMonth(item.month)}</td>
+                        <td class="p-4 font-semibold text-slate-800 dark:text-slate-100">${item.room}</td>
+                        <td class="p-4">${item.rent.toLocaleString()}</td>
+                        <td class="p-4">${item.water.toLocaleString()}</td>
+                        <td class="p-4">${item.elec.toLocaleString()}</td>
+                        <td class="p-4">${item.trash.toLocaleString()}</td>
+                        <td class="p-4 font-bold text-indigo-600 dark:text-indigo-400">${item.total.toLocaleString()}</td>
+                        <td class="p-4 text-center"><button onclick="deleteIncome(${item.id})" class="text-rose-500"><i class="fa-solid fa-trash"></i></button></td>
+                    </tr>`;
+            });
+
+            const expTbody = document.getElementById('expenseTableBody'); expTbody.innerHTML = '';
+            let sumExpenseFiltered = 0;
+            
+            const sortedExpenses = [...expenses].sort((a, b) => b.id - a.id);
+            sortedExpenses.forEach(item => {
+                const expMonth = item.date.substring(0, 7); 
+                if (expMonth === dashFilterMonth) {
+                    sumExpenseFiltered += item.amount;
+                }
+                
+                // ใช้ formatDateToDisplay เพื่อแปลงวันที่ก่อนนำไปแสดงในตาราง
+                expTbody.innerHTML += `
+                    <tr class="dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700/30">
+                        <td class="p-4">${formatDateToDisplay(item.date)}</td>
+                        <td class="p-4">${item.desc}</td>
+                        <td class="p-4 text-right font-medium">${item.amount.toLocaleString()}</td>
+                        <td class="p-4 text-center"><button onclick="deleteExpense(${item.id})" class="text-rose-500"><i class="fa-solid fa-trash"></i></button></td>
+                    </tr>`;
+            });
+
+            document.getElementById('dash-income').innerText = sumIncomeFiltered.toLocaleString() + ' ฿';
+            document.getElementById('dash-expense').innerText = sumExpenseFiltered.toLocaleString() + ' ฿';
+            document.getElementById('dash-net').innerText = (sumIncomeFiltered - sumExpenseFiltered).toLocaleString() + ' ฿';
+            
+            renderPrintView();
+        }
+
+        // 7. พิมพ์บิล
+        function renderPrintView() {
+            const printGrid = document.getElementById('print-grid');
+            printGrid.innerHTML = '';
+            if(incomes.length === 0) {
+                printGrid.innerHTML = '<div class="col-span-full text-center py-20 text-slate-500 bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700">ยังไม่มีข้อมูลบิลในระบบ กรุณาออกบิลก่อน</div>';
+                return;
+            }
+            
+            const sortedToPrint = [...incomes].sort((a, b) => a.room.localeCompare(b.room));
+
+            sortedToPrint.forEach(item => {
+                printGrid.innerHTML += `
+                    <div class="bill-wrapper bg-white rounded-xl border border-slate-300 p-6 flex flex-col justify-between shadow-sm dark:bg-slate-800 print:bg-white print:border-black">
+                        <div>
+                            <div class="text-center border-b border-slate-200 pb-3 mb-4 print:border-black">
+                                <h3 class="text-xl font-bold print-text-black text-slate-900 dark:text-white">ใบแจ้งหนี้ / INVOICE</h3>
+                                <p class="text-sm text-slate-500 print-text-black dark:text-slate-400">ประจำเดือน ${formatThaiMonth(item.month)}</p>
+                            </div>
+                            
+                            <div class="flex justify-between items-end mb-4">
+                                <span class="text-lg font-bold print-text-black text-slate-800 dark:text-slate-200">ห้อง / Room:</span>
+                                <span class="text-4xl font-black text-indigo-700 print-text-black dark:text-indigo-400">${item.room}</span>
+                            </div>
+                            
+                            <div class="space-y-3 text-slate-700 print-text-black dark:text-slate-300 text-sm font-medium">
+                                <div class="flex justify-between"><span>ค่าเช่าห้อง</span> <span>${item.rent.toLocaleString()} บาท</span></div>
+                                <div class="flex justify-between"><span>ค่าน้ำประปา (เหมาจ่าย)</span> <span>${item.water.toLocaleString()} บาท</span></div>
+                                <div class="flex justify-between items-start">
+                                    <div>
+                                        <span>ค่าไฟฟ้า (หน่วยละ ${RATE_ELEC} บ.)</span><br>
+                                        <span class="text-xs text-slate-500 print-text-black dark:text-slate-400 font-normal">
+                                            มิเตอร์: ${item.ePrev} -> ${item.eCurr} (ใช้ ${item.elecUnits} หน่วย)
+                                        </span>
+                                    </div>
+                                    <span class="pt-1">${item.elec.toLocaleString()} บาท</span>
+                                </div>
+                                <div class="flex justify-between"><span>ค่าส่วนกลาง/ขยะ</span> <span>${item.trash.toLocaleString()} บาท</span></div>
+                            </div>
+                        </div>
+                        
+                        <div class="mt-4 pt-3 border-t-2 border-slate-800 print:border-black">
+                            <div class="flex justify-between items-end mb-1">
+                                <span class="text-lg font-bold print-text-black text-slate-900 dark:text-white">รวมสุทธิ (Total)</span>
+                                <span class="text-2xl font-black text-rose-600 print-text-black dark:text-rose-400">${item.total.toLocaleString()} ฿</span>
+                            </div>
+                            <p class="text-[11px] text-center text-slate-500 mt-2 print-text-black dark:text-slate-400">
+                                * กรุณาชำระเงินภายในวันที่ 5 ของเดือนถัดไป *
+                            </p>
+                        </div>
+                    </div>
+                `;
+            });
+        }
+
+        // รันฟังก์ชันตอนเปิดเว็บ
+        loadData();
+        updateUI();
+    </script>
+</body>
+</html>

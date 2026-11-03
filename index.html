@@ -4,21 +4,16 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ระบบจัดการหอพัก (Firebase)</title>
-    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
             darkMode: 'class',
             theme: {
-                extend: {
-                    fontFamily: { sans: ['Prompt', 'sans-serif'], }
-                }
+                extend: { fontFamily: { sans: ['Prompt', 'sans-serif'], } }
             }
         }
     </script>
-    <!-- Google Fonts: Prompt -->
     <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700;900&display=swap" rel="stylesheet">
-    <!-- FontAwesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
     <style>
@@ -26,41 +21,57 @@
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
         
-        /* ตั้งค่าหน้ากระดาษพิมพ์ (A4) */
         @media print {
-            @page { size: A4; margin: 10mm; }
+            @page { 
+                size: A4; 
+                margin: 10mm; 
+            }
             body { 
                 background: white !important; 
+                -webkit-print-color-adjust: exact !important; 
+                print-color-adjust: exact !important; 
                 color: black !important;
-                -webkit-print-color-adjust: exact; 
-                print-color-adjust: exact; 
             }
             .print-hidden { display: none !important; }
+            
             #print-grid { 
                 display: grid !important; 
                 grid-template-columns: 1fr 1fr !important; 
                 gap: 5mm !important; 
+                width: 100% !important;
             }
+            
             .bill-wrapper { 
                 height: 135mm; 
-                border: 2px solid #334155 !important;
+                border: 1px solid #000 !important; 
                 page-break-inside: avoid;
                 box-shadow: none !important;
+                background-color: white !important;
+                padding: 6mm !important; /* เพิ่ม Padding ให้ดูโปร่งขึ้น */
+                color: #000 !important;
             }
+            
             .bill-wrapper:nth-child(4n) {
                 page-break-after: always;
             }
+
             .print-text-black { color: #000 !important; }
+            .print-color-primary { color: #4338ca !important; } 
+            .print-color-accent { color: #e11d48 !important; } 
+            .print-border { border-color: #000 !important; border-bottom-color: #000 !important; border-top-color: #000 !important; }
         }
+
+        .modal { display: none; position: fixed; z-index: 50; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5); }
+        .modal-content { background-color: #fff; margin: 10% auto; padding: 20px; border-radius: 12px; width: 90%; max-width: 500px; animation: slideDown 0.3s ease-out; }
+        @keyframes slideDown { from { transform: translateY(-50px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+        .dark .modal-content { background-color: #1e293b; color: #f1f5f9; }
     </style>
 
-    <!-- 🔥 Firebase SDK (Compat Version สำหรับรันไฟล์เดี่ยวในเครื่อง) 🔥 -->
     <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore-compat.js"></script>
 </head>
 <body class="bg-slate-50 text-slate-800 dark:bg-slate-900 dark:text-slate-200 transition-colors duration-300">
 
-    <!-- Navbar -->
     <nav class="print-hidden bg-white dark:bg-slate-800 shadow-sm border-b border-slate-200 dark:border-slate-700 sticky top-0 z-10 transition-colors duration-300">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="flex justify-between h-16 items-center">
@@ -82,7 +93,6 @@
 
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 flex flex-col md:flex-row gap-6 print:m-0 print:p-0">
         
-        <!-- Sidebar Menu -->
         <aside class="print-hidden w-full md:w-64 shrink-0">
             <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 p-4 space-y-2 sticky top-24 transition-colors duration-300">
                 <button onclick="switchTab('dashboard')" id="tab-dashboard" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-left font-medium transition-all bg-indigo-50 text-indigo-700 dark:bg-indigo-500/20 dark:text-indigo-300">
@@ -101,16 +111,18 @@
             </div>
         </aside>
 
-        <!-- Main Content -->
         <main class="flex-1 w-full overflow-hidden print:w-full print:overflow-visible">
             
-            <!-- 1. Dashboard View -->
+            <!-- Dashboard View -->
             <div id="view-dashboard" class="space-y-6 block print-hidden">
                 <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                     <h2 class="text-2xl font-bold dark:text-white">ภาพรวมระบบหอพัก</h2>
                     <div class="flex items-center gap-3 bg-white dark:bg-slate-800 px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm">
                         <label class="text-sm font-medium text-slate-600 dark:text-slate-300"><i class="fa-regular fa-calendar-check mr-1"></i> เดือนที่แสดง:</label>
-                        <input type="month" id="dash-month-filter" class="px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-slate-700 dark:text-white outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer">
+                        <div class="flex gap-2">
+                            <select id="dash-month" class="px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-slate-700 dark:text-white outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer"></select>
+                            <select id="dash-year" class="px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-slate-700 dark:text-white outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer"></select>
+                        </div>
                     </div>
                 </div>
 
@@ -131,7 +143,6 @@
                     </div>
                 </div>
 
-                <!-- เพิ่มตารางประวัติย้อนหลัง -->
                 <div class="mt-8 pt-4">
                     <h3 class="text-xl font-bold dark:text-white mb-4">ประวัติย้อนหลัง (สรุปรายเดือน)</h3>
                     <div class="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-x-auto">
@@ -144,23 +155,24 @@
                                     <th class="p-4 font-medium text-right">คงเหลือสุทธิ</th>
                                 </tr>
                             </thead>
-                            <tbody id="historyTableBody" class="divide-y divide-slate-200 dark:divide-slate-700 text-sm">
-                                <!-- ข้อมูลย้อนหลังจะแทรกตรงนี้ -->
-                            </tbody>
+                            <tbody id="historyTableBody" class="divide-y divide-slate-200 dark:divide-slate-700 text-sm"></tbody>
                         </table>
                     </div>
                 </div>
             </div>
 
-            <!-- 2. Income View -->
+            <!-- Income View -->
             <div id="view-income" class="space-y-6 hidden print-hidden">
                 <h2 class="text-2xl font-bold dark:text-white">บันทึกรายรับ / ออกบิล</h2>
                 <div class="bg-white dark:bg-slate-800 p-6 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm">
                     <form id="incomeForm" class="space-y-4">
-                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
-                            <div>
+                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4">
+                            <div class="lg:col-span-2">
                                 <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">ประจำเดือน</label>
-                                <input type="month" id="inc-month" required class="w-full px-4 py-2 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 dark:text-white outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer">
+                                <div class="flex gap-2">
+                                    <select id="inc-month" required class="w-1/2 px-4 py-2 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 dark:text-white outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer"></select>
+                                    <select id="inc-year" required class="w-1/2 px-4 py-2 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 dark:text-white outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer"></select>
+                                </div>
                             </div>
                             <div>
                                 <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">ห้องที่</label>
@@ -187,14 +199,19 @@
                                     <div class="relative">
                                         <label class="block text-xs text-slate-500 mb-1">เลขมิเตอร์เดือนก่อน</label>
                                         <input type="number" id="inc-elec-prev" step="0.01" required class="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 dark:text-white outline-none focus:ring-2 focus:ring-indigo-500 transition-all">
-                                        <p id="meter-autofill-badge" class="text-emerald-500 text-[10px] font-medium absolute -bottom-4 left-0 hidden"><i class="fa-solid fa-bolt"></i> ดึงจากเดือนก่อน</p>
+                                        <p id="meter-autofill-badge" class="text-emerald-500 text-[10px] font-medium absolute -bottom-4 left-0 hidden"><i class="fa-solid fa-bolt"></i> ดึงอัตโนมัติ</p>
                                     </div>
                                     <div>
                                         <label class="block text-xs text-slate-500 mb-1">เลขมิเตอร์เดือนนี้</label>
                                         <input type="number" id="inc-elec-curr" step="0.01" required class="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 dark:text-white outline-none focus:ring-2 focus:ring-indigo-500">
                                     </div>
                                 </div>
-                                <p id="elec-alert" class="text-rose-500 text-xs mt-3 hidden">มิเตอร์เดือนนี้ต้องมากกว่าหรือเท่ากับเดือนก่อน</p>
+                                <div class="mt-3 text-right">
+                                    <span class="text-sm font-semibold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/30 px-3 py-1.5 rounded-lg border border-indigo-100 dark:border-indigo-800/50 inline-block transition-all">
+                                        หน่วยที่ใช้ไป: <span id="elec-units-preview" class="text-lg">0</span> หน่วย
+                                    </span>
+                                </div>
+                                <p id="elec-alert" class="text-rose-500 text-xs mt-2 hidden">มิเตอร์เดือนนี้ต้องมากกว่าหรือเท่ากับเดือนก่อน</p>
                             </div>
                             <div class="flex flex-col justify-center bg-indigo-50 dark:bg-indigo-500/10 border border-indigo-100 rounded-xl p-4 text-center">
                                 <p class="text-slate-500 dark:text-indigo-300 text-sm font-medium">รวมสุทธิที่ต้องชำระ</p>
@@ -221,7 +238,7 @@
                 </div>
             </div>
 
-            <!-- 3. Expenses View -->
+            <!-- Expenses View -->
             <div id="view-expense" class="space-y-6 hidden print-hidden">
                 <h2 class="text-2xl font-bold dark:text-white">บันทึกรายจ่าย</h2>
                 <div class="bg-white dark:bg-slate-800 p-6 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm">
@@ -269,16 +286,21 @@
                 </div>
             </div>
 
-            <!-- 4. Print Bills View -->
+            <!-- Print Bills View -->
             <div id="view-print" class="space-y-6 hidden print:space-y-0 print:block w-full">
                 <div class="print-hidden flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
                     <h2 class="text-2xl font-bold dark:text-white">พิมพ์ใบแจ้งหนี้</h2>
                     
-                    <!-- ส่วนเลือกเดือนสำหรับหน้าปริ้น -->
                     <div class="flex flex-wrap items-center gap-3">
+                        <button onclick="openPrintHelp()" class="text-sm font-medium text-slate-500 hover:text-indigo-600 dark:text-slate-400 dark:hover:text-indigo-400 mr-2 transition-colors">
+                            <i class="fa-solid fa-circle-question"></i> วิธีตั้งค่าก่อนพิมพ์
+                        </button>
                         <div class="flex items-center gap-3 bg-white dark:bg-slate-800 px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm">
                             <label class="text-sm font-medium text-slate-600 dark:text-slate-300"><i class="fa-regular fa-calendar-check mr-1"></i> เลือกเดือนที่พิมพ์:</label>
-                            <input type="month" id="print-month-filter" class="px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-slate-700 dark:text-white outline-none focus:ring-2 focus:ring-emerald-500 cursor-pointer">
+                            <div class="flex gap-2">
+                                <select id="print-month" class="px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-slate-700 dark:text-white outline-none focus:ring-2 focus:ring-emerald-500 cursor-pointer"></select>
+                                <select id="print-year" class="px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-slate-700 dark:text-white outline-none focus:ring-2 focus:ring-emerald-500 cursor-pointer"></select>
+                            </div>
                         </div>
                         <button onclick="window.print()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-6 py-2.5 rounded-xl font-medium shadow-md transition-all flex items-center gap-2">
                             <i class="fa-solid fa-print"></i> พิมพ์ / Save PDF
@@ -286,7 +308,7 @@
                     </div>
                 </div>
                 
-                <div id="print-grid" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div id="print-grid" class="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <!-- บิลจะถูกแทรกที่นี่ -->
                 </div>
             </div>
@@ -294,9 +316,29 @@
         </main>
     </div>
 
-    <!-- Firebase Logic -->
+    <!-- Modal คำแนะนำการพิมพ์ -->
+    <div id="printHelpModal" class="modal print-hidden">
+        <div class="modal-content shadow-xl border border-slate-200 dark:border-slate-700">
+            <div class="flex justify-between items-center mb-4 border-b border-slate-200 dark:border-slate-700 pb-3">
+                <h3 class="text-xl font-bold dark:text-white"><i class="fa-solid fa-print text-emerald-500 mr-2"></i> คำแนะนำการตั้งค่าก่อนพิมพ์</h3>
+                <button onclick="closePrintHelp()" class="text-slate-400 hover:text-rose-500 text-xl font-bold">&times;</button>
+            </div>
+            <div class="space-y-3 text-sm text-slate-600 dark:text-slate-300">
+                <p>เพื่อให้บิลออกมาพอดีและมีสีสันสวยงาม โปรดตั้งค่าดังนี้:</p>
+                <ul class="list-disc pl-5 space-y-2">
+                    <li><b>Color (สี):</b> เลือก <span class="text-indigo-600 dark:text-indigo-400">สี (Color)</span></li>
+                    <li><b>More settings (การตั้งค่าเพิ่มเติม):</b> คลิกเปิดเมนูนี้ด้านล่าง</li>
+                    <li><i>(สำคัญ)</i> <b>Options:</b> <b>ติ๊กถูก ✅ ที่ "Background graphics" (กราฟิกพื้นหลัง)</b> เพื่อให้สีสันในตารางบิลแสดงผลครบถ้วน</li>
+                    <li><i>(สำคัญ)</i> <b>Options:</b> <b>เอาเครื่องหมายถูกออก ❌ จาก "Headers and footers" (ส่วนหัวและส่วนท้าย)</b> เพื่อซ่อนวันที่และลิงก์เว็บไซต์</li>
+                </ul>
+            </div>
+            <div class="mt-6 flex justify-end">
+                <button onclick="closePrintHelp()" class="bg-indigo-100 hover:bg-indigo-200 text-indigo-700 dark:bg-slate-700 dark:text-slate-200 dark:hover:bg-slate-600 px-4 py-2 rounded-lg font-medium transition-colors">รับทราบ</button>
+            </div>
+        </div>
+    </div>
+
     <script>
-        // 1. ตั้งค่า Firebase ของคุณ
         const firebaseConfig = {
             apiKey: "AIzaSyBYJWAOoBMew9So5pQLnqX4_c5bRl0hnG4",
             authDomain: "dorm-manager-6c748.firebaseapp.com",
@@ -307,7 +349,6 @@
             measurementId: "G-JTDTNM5TPV"
         };
 
-        // 2. Initialize Firebase
         firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
 
@@ -316,17 +357,19 @@
         let incomes = [];
         let expenses = [];
 
-        // ฟังก์ชันโหลดข้อมูลจาก Firebase
+        function openPrintHelp() { document.getElementById('printHelpModal').style.display = 'block'; }
+        function closePrintHelp() { document.getElementById('printHelpModal').style.display = 'none'; }
+        window.onclick = function(event) {
+            if (event.target == document.getElementById('printHelpModal')) { closePrintHelp(); }
+        }
+
         async function loadData() {
             try {
                 const syncStatus = document.getElementById('sync-status');
-                
-                // ดึงรายรับ
                 const incSnapshot = await db.collection("incomes").get();
                 incomes = [];
                 incSnapshot.forEach((doc) => { incomes.push({ id: doc.id, ...doc.data() }); });
                 
-                // ดึงรายจ่าย
                 const expSnapshot = await db.collection("expenses").get();
                 expenses = [];
                 expSnapshot.forEach((doc) => { expenses.push({ id: doc.id, ...doc.data() }); });
@@ -353,14 +396,50 @@
             return `${parts[2]}-${parts[1]}-${parts[0]}`;
         }
 
-        const currentMonthStr = new Date().toISOString().slice(0, 7); 
-        document.getElementById('inc-month').value = currentMonthStr;
-        document.getElementById('dash-month-filter').value = currentMonthStr;
-        document.getElementById('print-month-filter').value = currentMonthStr;
-        document.getElementById('exp-date').valueAsDate = new Date();
+        // --- ระบบสร้างตัวเลือก เดือน และ ปี พ.ศ. ---
+        function setupMonthYearSelectors() {
+            const currentYear = new Date().getFullYear();
+            let yearHtml = '';
+            for (let i = currentYear - 2; i <= currentYear + 3; i++) {
+                yearHtml += `<option value="${i}">${i + 543}</option>`;
+            }
+            
+            const monthNames = ["มกราคม", "กุมภาพันธ์", "มีนาคม", "เมษายน", "พฤษภาคม", "มิถุนายน", "กรกฎาคม", "สิงหาคม", "กันยายน", "ตุลาคม", "พฤศจิกายน", "ธันวาคม"];
+            let monthHtml = '';
+            monthNames.forEach((m, idx) => {
+                monthHtml += `<option value="${String(idx+1).padStart(2, '0')}">${m}</option>`;
+            });
 
-        document.getElementById('dash-month-filter').addEventListener('change', updateUI);
-        document.getElementById('print-month-filter').addEventListener('change', renderPrintView);
+            ['inc', 'dash', 'print'].forEach(prefix => {
+                const mSel = document.getElementById(`${prefix}-month`);
+                const ySel = document.getElementById(`${prefix}-year`);
+                if (mSel) mSel.innerHTML = monthHtml;
+                if (ySel) ySel.innerHTML = yearHtml;
+            });
+        }
+
+        setupMonthYearSelectors(); 
+
+        const now = new Date();
+        const currMonthStr = String(now.getMonth() + 1).padStart(2, '0');
+        const currYearStr = String(now.getFullYear());
+        
+        ['inc', 'dash', 'print'].forEach(prefix => {
+            document.getElementById(`${prefix}-month`).value = currMonthStr;
+            document.getElementById(`${prefix}-year`).value = currYearStr;
+        });
+        
+        document.getElementById('exp-date').valueAsDate = now;
+
+        function getFilterMonth(prefix) {
+            return `${document.getElementById(`${prefix}-year`).value}-${document.getElementById(`${prefix}-month`).value}`;
+        }
+
+        document.getElementById('dash-month').addEventListener('change', updateUI);
+        document.getElementById('dash-year').addEventListener('change', updateUI);
+        
+        document.getElementById('print-month').addEventListener('change', renderPrintView);
+        document.getElementById('print-year').addEventListener('change', renderPrintView);
 
         const roomInput = document.getElementById('inc-room');
         const elecPrevInput = document.getElementById('inc-elec-prev');
@@ -395,7 +474,6 @@
             } else { themeIcon.classList.replace('fa-sun', 'fa-moon'); }
         });
 
-        // สลับแท็บ
         function switchTab(tabId) {
             ['dashboard', 'income', 'expense', 'print'].forEach(id => {
                 document.getElementById(`view-${id}`).classList.add('hidden');
@@ -426,6 +504,9 @@
             } else { 
                 alertMsg.classList.add('hidden'); 
             }
+            
+            document.getElementById('elec-units-preview').innerText = elecUnits.toLocaleString('th-TH', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+            
             const total = rent + water + (elecUnits * RATE_ELEC) + RATE_TRASH;
             document.getElementById('inc-total-preview').innerText = total.toLocaleString('th-TH', { minimumFractionDigits: 0, maximumFractionDigits: 2 }) + ' ฿';
         }
@@ -442,7 +523,6 @@
             }
         });
 
-        // บันทึกบิลลง Firebase
         document.getElementById('incomeForm').addEventListener('submit', async function(e) {
             e.preventDefault();
             const ePrev = parseFloat(document.getElementById('inc-elec-prev').value);
@@ -457,7 +537,7 @@
             const elecTotal = (eCurr - ePrev) * RATE_ELEC;
             const rent = parseFloat(document.getElementById('inc-rent').value);
             const water = parseFloat(document.getElementById('inc-water').value);
-            const monthStr = document.getElementById('inc-month').value; 
+            const monthStr = getFilterMonth('inc'); 
 
             const newRecord = {
                 timestamp: Date.now(),
@@ -480,6 +560,7 @@
                 document.getElementById('inc-elec-prev').value = '';
                 document.getElementById('inc-elec-curr').value = '';
                 document.getElementById('inc-total-preview').innerText = '0 ฿';
+                document.getElementById('elec-units-preview').innerText = '0';
                 autoFillBadge.classList.add('hidden');
                 document.getElementById('inc-room').focus();
             } catch (err) {
@@ -491,7 +572,6 @@
             }
         });
 
-        // บันทึกรายจ่ายลง Firebase
         document.getElementById('expenseForm').addEventListener('submit', async function(e) {
             e.preventDefault();
             const selectedType = expTypeSelect.value;
@@ -526,7 +606,6 @@
             }
         });
 
-        // ลบข้อมูล Firebase
         async function deleteIncome(id) { 
             if(confirm('ต้องการลบบิลนี้ใช่หรือไม่?')) {
                 try {
@@ -547,24 +626,20 @@
             }
         }
 
-        // สร้างตารางข้อมูลย้อนหลัง (Historical Data)
         function renderHistoricalData() {
             const historyMap = {};
             
-            // รวมยอดรายรับ
             incomes.forEach(inc => {
                 if(!historyMap[inc.month]) historyMap[inc.month] = { income: 0, expense: 0 };
                 historyMap[inc.month].income += inc.total;
             });
             
-            // รวมยอดรายจ่าย
             expenses.forEach(exp => {
                 const expMonth = exp.date.substring(0, 7);
                 if(!historyMap[expMonth]) historyMap[expMonth] = { income: 0, expense: 0 };
                 historyMap[expMonth].expense += exp.amount;
             });
 
-            // เรียงเดือนจากล่าสุดไปเก่าสุด
             const sortedMonths = Object.keys(historyMap).sort((a,b) => b.localeCompare(a)); 
             const historyTbody = document.getElementById('historyTableBody');
             historyTbody.innerHTML = '';
@@ -591,9 +666,8 @@
             });
         }
 
-        // อัปเดต UI 
         function updateUI() {
-            const dashFilterMonth = document.getElementById('dash-month-filter').value;
+            const dashFilterMonth = getFilterMonth('dash');
             const incTbody = document.getElementById('incomeTableBody'); incTbody.innerHTML = '';
             let sumIncomeFiltered = 0;
             
@@ -633,18 +707,16 @@
             document.getElementById('dash-expense').innerText = sumExpenseFiltered.toLocaleString('th-TH', { minimumFractionDigits: 0, maximumFractionDigits: 2 }) + ' ฿';
             document.getElementById('dash-net').innerText = (sumIncomeFiltered - sumExpenseFiltered).toLocaleString('th-TH', { minimumFractionDigits: 0, maximumFractionDigits: 2 }) + ' ฿';
             
-            // สร้างข้อมูลหน้าปริ้น และ อัปเดตตารางย้อนหลัง
             renderPrintView();
             renderHistoricalData();
         }
 
-        // หน้าปริ้นท์ แยกฟิลเตอร์ตามเดือนที่เลือกในแท็บ "พิมพ์ใบแจ้งหนี้"
+        // หน้าปริ้นท์ ปรับฟอนต์ให้ใหญ่ขึ้นตามที่ขอ
         function renderPrintView() {
-            const printMonthFilter = document.getElementById('print-month-filter').value;
+            const printMonthFilter = getFilterMonth('print');
             const printGrid = document.getElementById('print-grid');
             printGrid.innerHTML = '';
             
-            // กรองเฉพาะบิลของเดือนที่เลือก
             const filteredIncomes = incomes.filter(i => i.month === printMonthFilter);
 
             if(filteredIncomes.length === 0) {
@@ -656,40 +728,40 @@
 
             sortedToPrint.forEach(item => {
                 printGrid.innerHTML += `
-                    <div class="bill-wrapper bg-white rounded-xl border border-slate-300 p-6 flex flex-col justify-between shadow-sm dark:bg-slate-800 print:bg-white print:border-black">
+                    <div class="bill-wrapper print-border bg-white rounded-xl shadow-sm border border-slate-200 p-6 flex flex-col justify-between dark:bg-slate-800 dark:border-slate-700">
                         <div>
-                            <div class="text-center border-b border-slate-200 pb-3 mb-4 print:border-black">
-                                <h3 class="text-xl font-bold print-text-black text-slate-900 dark:text-white">ใบแจ้งหนี้ / INVOICE</h3>
-                                <p class="text-sm text-slate-500 print-text-black dark:text-slate-400">ประจำเดือน ${formatThaiMonth(item.month)}</p>
+                            <div class="text-center pb-4 mb-5" style="border-bottom: 1px solid #cbd5e1;">
+                                <h3 class="text-2xl font-bold print-text-black text-slate-900 dark:text-white">ใบแจ้งหนี้ / INVOICE</h3>
+                                <p class="text-base print-text-black text-slate-600 dark:text-slate-400 mt-1">ประจำเดือน ${formatThaiMonth(item.month)}</p>
                             </div>
                             
-                            <div class="flex justify-between items-end mb-4">
-                                <span class="text-lg font-bold print-text-black text-slate-800 dark:text-slate-200">ห้อง / Room:</span>
-                                <span class="text-4xl font-black text-indigo-700 print-text-black dark:text-indigo-400">${item.room}</span>
+                            <div class="flex justify-between items-end mb-6">
+                                <span class="text-xl font-bold print-text-black text-slate-800 dark:text-slate-200">ห้อง / Room:</span>
+                                <span class="text-6xl font-black print-color-primary text-indigo-700 dark:text-indigo-400">${item.room}</span>
                             </div>
                             
-                            <div class="space-y-3 text-slate-700 print-text-black dark:text-slate-300 text-sm font-medium">
-                                <div class="flex justify-between"><span>ค่าเช่าห้อง</span> <span>${item.rent.toLocaleString('th-TH', { minimumFractionDigits: 0, maximumFractionDigits: 2 })} บาท</span></div>
-                                <div class="flex justify-between"><span>ค่าน้ำประปา (เหมาจ่าย)</span> <span>${item.water.toLocaleString('th-TH', { minimumFractionDigits: 0, maximumFractionDigits: 2 })} บาท</span></div>
+                            <div class="space-y-4 print-text-black text-slate-800 dark:text-slate-300 text-base font-medium">
+                                <div class="flex justify-between"><span>ค่าเช่าห้อง</span> <span class="text-slate-900 dark:text-white">${item.rent.toLocaleString('th-TH', { minimumFractionDigits: 0, maximumFractionDigits: 2 })} บาท</span></div>
+                                <div class="flex justify-between"><span>ค่าน้ำประปา (เหมาจ่าย)</span> <span class="text-slate-900 dark:text-white">${item.water.toLocaleString('th-TH', { minimumFractionDigits: 0, maximumFractionDigits: 2 })} บาท</span></div>
                                 <div class="flex justify-between items-start">
                                     <div>
                                         <span>ค่าไฟฟ้า (หน่วยละ ${RATE_ELEC} บ.)</span><br>
-                                        <span class="text-xs text-slate-500 print-text-black dark:text-slate-400 font-normal">
+                                        <span class="text-sm print-text-black text-slate-600 dark:text-slate-400 font-normal">
                                             มิเตอร์: ${item.ePrev} -> ${item.eCurr} (ใช้ ${item.elecUnits.toLocaleString('th-TH', { minimumFractionDigits: 0, maximumFractionDigits: 2 })} หน่วย)
                                         </span>
                                     </div>
-                                    <span class="pt-1">${item.elec.toLocaleString('th-TH', { minimumFractionDigits: 0, maximumFractionDigits: 2 })} บาท</span>
+                                    <span class="pt-1 text-slate-900 dark:text-white">${item.elec.toLocaleString('th-TH', { minimumFractionDigits: 0, maximumFractionDigits: 2 })} บาท</span>
                                 </div>
-                                <div class="flex justify-between"><span>ค่าส่วนกลาง/ขยะ</span> <span>${item.trash.toLocaleString('th-TH', { minimumFractionDigits: 0, maximumFractionDigits: 2 })} บาท</span></div>
+                                <div class="flex justify-between"><span>ค่าส่วนกลาง/ขยะ</span> <span class="text-slate-900 dark:text-white">${item.trash.toLocaleString('th-TH', { minimumFractionDigits: 0, maximumFractionDigits: 2 })} บาท</span></div>
                             </div>
                         </div>
                         
-                        <div class="mt-4 pt-3 border-t-2 border-slate-800 print:border-black">
-                            <div class="flex justify-between items-end mb-1">
-                                <span class="text-lg font-bold print-text-black text-slate-900 dark:text-white">รวมสุทธิ (Total)</span>
-                                <span class="text-2xl font-black text-rose-600 print-text-black dark:text-rose-400">${item.total.toLocaleString('th-TH', { minimumFractionDigits: 0, maximumFractionDigits: 2 })} ฿</span>
+                        <div class="mt-6 pt-4" style="border-top: 2px solid #94a3b8;">
+                            <div class="flex justify-between items-end mb-2">
+                                <span class="text-xl font-bold print-text-black text-slate-900 dark:text-white">รวมสุทธิ (Total)</span>
+                                <span class="text-3xl font-black print-color-accent text-rose-600 dark:text-rose-400">${item.total.toLocaleString('th-TH', { minimumFractionDigits: 0, maximumFractionDigits: 2 })} ฿</span>
                             </div>
-                            <p class="text-[11px] text-center text-slate-500 mt-2 print-text-black dark:text-slate-400">
+                            <p class="text-sm text-center print-text-black text-slate-500 mt-3 dark:text-slate-400">
                                 * กรุณาชำระเงินภายในวันที่ 5 ของเดือนถัดไป *
                             </p>
                         </div>
@@ -698,7 +770,6 @@
             });
         }
 
-        // โหลดข้อมูลอัตโนมัติเมื่อเปิดหน้าเว็บ
         loadData();
     </script>
 </body>

@@ -47,7 +47,7 @@
                 page-break-inside: avoid;
                 box-shadow: none !important;
                 background-color: white !important;
-                padding: 6mm !important; /* เพิ่ม Padding ให้ดูโปร่งขึ้น */
+                padding: 6mm !important; 
                 color: #000 !important;
             }
             
@@ -441,27 +441,46 @@
         document.getElementById('print-month').addEventListener('change', renderPrintView);
         document.getElementById('print-year').addEventListener('change', renderPrintView);
 
+        // --- ลอจิกดึงมิเตอร์ให้ตรงกับเดือนก่อนหน้าอย่างแม่นยำ ---
         const roomInput = document.getElementById('inc-room');
         const elecPrevInput = document.getElementById('inc-elec-prev');
         const autoFillBadge = document.getElementById('meter-autofill-badge');
 
-        roomInput.addEventListener('input', function() {
-            const roomNo = this.value.trim();
+        function checkAndFillMeter() {
+            const roomNo = roomInput.value.trim();
             autoFillBadge.classList.add('hidden'); 
+            elecPrevInput.value = ''; // เคลียร์ค่าเสมอเพื่อป้องกันข้อมูลเก่าค้าง
+            elecPrevInput.classList.remove('border-emerald-500', 'bg-emerald-50', 'dark:bg-emerald-900/20');
             
             if (roomNo !== '') {
-                const roomHistory = incomes.filter(i => i.room === roomNo);
-                if (roomHistory.length > 0) {
-                    roomHistory.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
-                    elecPrevInput.value = roomHistory[0].eCurr;
-                    
+                // คำนวณหาเดือนก่อนหน้าอิงจากค่าที่เลือก
+                const currM = parseInt(document.getElementById('inc-month').value);
+                const currY = parseInt(document.getElementById('inc-year').value);
+                
+                let prevM = currM - 1;
+                let prevY = currY;
+                if (prevM === 0) {
+                    prevM = 12;
+                    prevY -= 1;
+                }
+                const prevMonthStr = `${prevY}-${String(prevM).padStart(2, '0')}`;
+                
+                // หาประวัติบิลของเดือนก่อนหน้าพอดี
+                const matchRecord = incomes.find(i => i.room === roomNo && i.month === prevMonthStr);
+                
+                if (matchRecord) {
+                    elecPrevInput.value = matchRecord.eCurr;
                     autoFillBadge.classList.remove('hidden');
                     elecPrevInput.classList.add('border-emerald-500', 'bg-emerald-50', 'dark:bg-emerald-900/20');
                     setTimeout(() => { elecPrevInput.classList.remove('border-emerald-500', 'bg-emerald-50', 'dark:bg-emerald-900/20'); }, 2000);
                     calculatePreview();
                 }
             }
-        });
+        }
+
+        roomInput.addEventListener('input', checkAndFillMeter);
+        document.getElementById('inc-month').addEventListener('change', checkAndFillMeter);
+        document.getElementById('inc-year').addEventListener('change', checkAndFillMeter);
 
         const themeToggle = document.getElementById('themeToggle');
         const themeIcon = document.getElementById('themeIcon');
@@ -711,7 +730,6 @@
             renderHistoricalData();
         }
 
-        // หน้าปริ้นท์ ปรับฟอนต์ให้ใหญ่ขึ้นตามที่ขอ
         function renderPrintView() {
             const printMonthFilter = getFilterMonth('print');
             const printGrid = document.getElementById('print-grid');

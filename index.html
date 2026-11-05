@@ -65,6 +65,11 @@
         .modal-content { background-color: #fff; margin: 10% auto; padding: 20px; border-radius: 12px; width: 90%; max-width: 500px; animation: slideDown 0.3s ease-out; }
         @keyframes slideDown { from { transform: translateY(-50px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
         .dark .modal-content { background-color: #1e293b; color: #f1f5f9; }
+        
+        .edit-mode-active {
+            border: 2px solid #fbbf24 !important;
+            box-shadow: 0 0 15px rgba(251, 191, 36, 0.3) !important;
+        }
     </style>
 
     <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-app-compat.js"></script>
@@ -164,8 +169,10 @@
             <!-- Income View -->
             <div id="view-income" class="space-y-6 hidden print-hidden">
                 <h2 class="text-2xl font-bold dark:text-white">บันทึกรายรับ / ออกบิล</h2>
-                <div class="bg-white dark:bg-slate-800 p-6 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm">
+                <div id="income-form-container" class="bg-white dark:bg-slate-800 p-6 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm transition-all duration-300">
                     <form id="incomeForm" class="space-y-4">
+                        <input type="hidden" id="inc-edit-id" value="">
+                        
                         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4">
                             <div class="lg:col-span-2">
                                 <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">ประจำเดือน</label>
@@ -218,7 +225,11 @@
                                 <div class="text-3xl font-bold text-indigo-700 dark:text-indigo-400 mt-1" id="inc-total-preview">0 ฿</div>
                             </div>
                         </div>
-                        <div class="flex justify-end pt-4">
+                        
+                        <div class="flex justify-end pt-4 gap-3">
+                            <button type="button" id="btn-cancel-edit-inc" onclick="cancelEditModeInc()" class="hidden bg-slate-200 hover:bg-slate-300 text-slate-700 dark:bg-slate-700 dark:hover:bg-slate-600 dark:text-white px-6 py-2.5 rounded-xl font-medium transition-all">
+                                ยกเลิก
+                            </button>
                             <button type="submit" id="btn-submit-income" class="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-2.5 rounded-xl font-medium shadow-md transition-all flex items-center justify-center min-w-[150px]">
                                 <i class="fa-solid fa-check mr-2"></i> บันทึกบิล
                             </button>
@@ -230,7 +241,14 @@
                     <table class="w-full text-left border-collapse whitespace-nowrap">
                         <thead>
                             <tr class="bg-slate-50 dark:bg-slate-700/50 text-slate-500 dark:text-slate-300 text-sm border-b">
-                                <th class="p-4">ประจำเดือน</th><th class="p-4">ห้อง</th><th class="p-4">ค่าห้อง</th><th class="p-4">ค่าน้ำ</th><th class="p-4">ค่าไฟ</th><th class="p-4">ค่าขยะ</th><th class="p-4">ยอดรวม</th><th class="p-4 text-center">ลบ</th>
+                                <th class="p-4">ประจำเดือน</th>
+                                <th class="p-4">ห้อง</th>
+                                <th class="p-4">ค่าห้อง</th>
+                                <th class="p-4">ค่าน้ำ</th>
+                                <th class="p-4">ค่าไฟ</th>
+                                <th class="p-4">ค่าขยะ</th>
+                                <th class="p-4">ยอดรวม</th>
+                                <th class="p-4 text-center">จัดการ</th>
                             </tr>
                         </thead>
                         <tbody id="incomeTableBody" class="divide-y divide-slate-200 dark:divide-slate-700 text-sm"></tbody>
@@ -241,8 +259,10 @@
             <!-- Expenses View -->
             <div id="view-expense" class="space-y-6 hidden print-hidden">
                 <h2 class="text-2xl font-bold dark:text-white">บันทึกรายจ่าย</h2>
-                <div class="bg-white dark:bg-slate-800 p-6 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm">
+                <div id="expense-form-container" class="bg-white dark:bg-slate-800 p-6 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm transition-all duration-300">
                     <form id="expenseForm" class="flex flex-col gap-4">
+                        <input type="hidden" id="exp-edit-id" value="">
+                        
                         <div class="flex flex-col md:flex-row gap-4 items-end">
                             <div class="w-full md:w-1/4">
                                 <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">วันที่ชำระ</label>
@@ -264,9 +284,12 @@
                                 <input type="number" id="exp-amount" step="0.01" required class="w-full px-4 py-2.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 dark:text-white outline-none focus:ring-2 focus:ring-rose-500">
                             </div>
                         </div>
-                        <div class="flex justify-end pt-2">
-                            <button type="submit" id="btn-submit-expense" class="bg-rose-600 hover:bg-rose-700 text-white px-8 py-2.5 rounded-xl font-medium shadow-md transition-all min-w-[150px]">
-                                บันทึกรายจ่าย
+                        <div class="flex justify-end pt-2 gap-3">
+                            <button type="button" id="btn-cancel-edit-exp" onclick="cancelEditModeExp()" class="hidden bg-slate-200 hover:bg-slate-300 text-slate-700 dark:bg-slate-700 dark:hover:bg-slate-600 dark:text-white px-6 py-2.5 rounded-xl font-medium transition-all">
+                                ยกเลิก
+                            </button>
+                            <button type="submit" id="btn-submit-expense" class="bg-rose-600 hover:bg-rose-700 text-white px-8 py-2.5 rounded-xl font-medium shadow-md transition-all flex items-center justify-center min-w-[150px]">
+                                <i class="fa-solid fa-check mr-2"></i> บันทึกรายจ่าย
                             </button>
                         </div>
                     </form>
@@ -278,7 +301,7 @@
                                 <th class="p-4">วันที่ชำระ</th>
                                 <th class="p-4">รายการ</th>
                                 <th class="p-4 text-right">จำนวนเงิน (บาท)</th>
-                                <th class="p-4 text-center">ลบ</th>
+                                <th class="p-4 text-center">จัดการ</th>
                             </tr>
                         </thead>
                         <tbody id="expenseTableBody" class="divide-y divide-slate-200 dark:divide-slate-700 text-sm"></tbody>
@@ -396,7 +419,6 @@
             return `${parts[2]}-${parts[1]}-${parts[0]}`;
         }
 
-        // --- ระบบสร้างตัวเลือก เดือน และ ปี พ.ศ. ---
         function setupMonthYearSelectors() {
             const currentYear = new Date().getFullYear();
             let yearHtml = '';
@@ -441,19 +463,19 @@
         document.getElementById('print-month').addEventListener('change', renderPrintView);
         document.getElementById('print-year').addEventListener('change', renderPrintView);
 
-        // --- ลอจิกดึงมิเตอร์ให้ตรงกับเดือนก่อนหน้าอย่างแม่นยำ ---
         const roomInput = document.getElementById('inc-room');
         const elecPrevInput = document.getElementById('inc-elec-prev');
         const autoFillBadge = document.getElementById('meter-autofill-badge');
 
         function checkAndFillMeter() {
+            if(document.getElementById('inc-edit-id').value !== "") return;
+
             const roomNo = roomInput.value.trim();
             autoFillBadge.classList.add('hidden'); 
-            elecPrevInput.value = ''; // เคลียร์ค่าเสมอเพื่อป้องกันข้อมูลเก่าค้าง
+            elecPrevInput.value = ''; 
             elecPrevInput.classList.remove('border-emerald-500', 'bg-emerald-50', 'dark:bg-emerald-900/20');
             
             if (roomNo !== '') {
-                // คำนวณหาเดือนก่อนหน้าอิงจากค่าที่เลือก
                 const currM = parseInt(document.getElementById('inc-month').value);
                 const currY = parseInt(document.getElementById('inc-year').value);
                 
@@ -465,7 +487,6 @@
                 }
                 const prevMonthStr = `${prevY}-${String(prevM).padStart(2, '0')}`;
                 
-                // หาประวัติบิลของเดือนก่อนหน้าพอดี
                 const matchRecord = incomes.find(i => i.room === roomNo && i.month === prevMonthStr);
                 
                 if (matchRecord) {
@@ -530,6 +551,52 @@
             document.getElementById('inc-total-preview').innerText = total.toLocaleString('th-TH', { minimumFractionDigits: 0, maximumFractionDigits: 2 }) + ' ฿';
         }
 
+        window.editIncome = function(id) {
+            const record = incomes.find(i => i.id === id);
+            if(!record) return;
+
+            const parts = record.month.split('-');
+            document.getElementById('inc-year').value = parts[0];
+            document.getElementById('inc-month').value = parts[1];
+
+            document.getElementById('inc-room').value = record.room;
+            document.getElementById('inc-rent').value = record.rent;
+            document.getElementById('inc-water').value = record.water;
+            document.getElementById('inc-elec-prev').value = record.ePrev;
+            document.getElementById('inc-elec-curr').value = record.eCurr;
+            
+            document.getElementById('inc-edit-id').value = id;
+            
+            document.getElementById('income-form-container').classList.add('edit-mode-active');
+            const btnSubmit = document.getElementById('btn-submit-income');
+            btnSubmit.innerHTML = '<i class="fa-solid fa-floppy-disk mr-2"></i> อัปเดตบิล';
+            btnSubmit.classList.replace('bg-indigo-600', 'bg-amber-500');
+            btnSubmit.classList.replace('hover:bg-indigo-700', 'hover:bg-amber-600');
+            document.getElementById('btn-cancel-edit-inc').classList.remove('hidden');
+
+            calculatePreview();
+            window.scrollTo({ top: 0, behavior: 'smooth' }); 
+        };
+
+        window.cancelEditModeInc = function() {
+            document.getElementById('inc-edit-id').value = '';
+            document.getElementById('incomeForm').reset();
+            
+            const now = new Date();
+            document.getElementById('inc-month').value = String(now.getMonth() + 1).padStart(2, '0');
+            document.getElementById('inc-year').value = String(now.getFullYear());
+            document.getElementById('inc-rent').value = 1200;
+            document.getElementById('inc-total-preview').innerText = '0 ฿';
+            document.getElementById('elec-units-preview').innerText = '0';
+            
+            document.getElementById('income-form-container').classList.remove('edit-mode-active');
+            const btnSubmit = document.getElementById('btn-submit-income');
+            btnSubmit.innerHTML = '<i class="fa-solid fa-check mr-2"></i> บันทึกบิล';
+            btnSubmit.classList.replace('bg-amber-500', 'bg-indigo-600');
+            btnSubmit.classList.replace('hover:bg-amber-600', 'hover:bg-indigo-700');
+            document.getElementById('btn-cancel-edit-inc').classList.add('hidden');
+        };
+
         const expTypeSelect = document.getElementById('exp-type');
         const expCustomInput = document.getElementById('exp-custom');
         expTypeSelect.addEventListener('change', (e) => {
@@ -541,6 +608,54 @@
                 expCustomInput.removeAttribute('required');
             }
         });
+
+        window.editExpense = function(id) {
+            const record = expenses.find(i => i.id === id);
+            if(!record) return;
+
+            document.getElementById('exp-date').value = record.date;
+            document.getElementById('exp-amount').value = record.amount;
+            
+            // เช็คว่ารายการตรงกับ Dropdown ปกติหรือไม่ ถ้าไม่ตรงให้ถือว่าเป็น "อื่นๆ"
+            const standardTypes = ["ค่าไฟส่วนกลาง", "ค่าน้ำส่วนกลาง", "ค่าอินเตอร์เน็ต"];
+            if(standardTypes.includes(record.desc)) {
+                expTypeSelect.value = record.desc;
+                expCustomInput.classList.add('hidden');
+                expCustomInput.removeAttribute('required');
+            } else {
+                expTypeSelect.value = 'อื่นๆ';
+                expCustomInput.value = record.desc;
+                expCustomInput.classList.remove('hidden');
+                expCustomInput.setAttribute('required', 'true');
+            }
+
+            document.getElementById('exp-edit-id').value = id;
+            
+            document.getElementById('expense-form-container').classList.add('edit-mode-active');
+            const btnSubmit = document.getElementById('btn-submit-expense');
+            btnSubmit.innerHTML = '<i class="fa-solid fa-floppy-disk mr-2"></i> อัปเดตรายจ่าย';
+            btnSubmit.classList.replace('bg-rose-600', 'bg-amber-500');
+            btnSubmit.classList.replace('hover:bg-rose-700', 'hover:bg-amber-600');
+            document.getElementById('btn-cancel-edit-exp').classList.remove('hidden');
+
+            window.scrollTo({ top: 0, behavior: 'smooth' }); 
+        };
+
+        window.cancelEditModeExp = function() {
+            document.getElementById('exp-edit-id').value = '';
+            document.getElementById('expenseForm').reset();
+            document.getElementById('exp-date').valueAsDate = new Date();
+            
+            expCustomInput.classList.add('hidden');
+            expCustomInput.removeAttribute('required');
+            
+            document.getElementById('expense-form-container').classList.remove('edit-mode-active');
+            const btnSubmit = document.getElementById('btn-submit-expense');
+            btnSubmit.innerHTML = '<i class="fa-solid fa-check mr-2"></i> บันทึกรายจ่าย';
+            btnSubmit.classList.replace('bg-amber-500', 'bg-rose-600');
+            btnSubmit.classList.replace('hover:bg-amber-600', 'hover:bg-rose-700');
+            document.getElementById('btn-cancel-edit-exp').classList.add('hidden');
+        };
 
         document.getElementById('incomeForm').addEventListener('submit', async function(e) {
             e.preventDefault();
@@ -557,9 +672,9 @@
             const rent = parseFloat(document.getElementById('inc-rent').value);
             const water = parseFloat(document.getElementById('inc-water').value);
             const monthStr = getFilterMonth('inc'); 
+            const editId = document.getElementById('inc-edit-id').value;
 
-            const newRecord = {
-                timestamp: Date.now(),
+            const recordData = {
                 month: monthStr,
                 room: document.getElementById('inc-room').value,
                 rent: rent, water: water, ePrev: ePrev, eCurr: eCurr, elecUnits: eCurr - ePrev,
@@ -568,20 +683,19 @@
             };
             
             try {
-                const docRef = await db.collection("incomes").add(newRecord);
-                newRecord.id = docRef.id;
-                incomes.push(newRecord);
-                updateUI(); 
+                if(editId) {
+                    await db.collection("incomes").doc(editId).update(recordData);
+                    const index = incomes.findIndex(i => i.id === editId);
+                    incomes[index] = { ...incomes[index], ...recordData };
+                } else {
+                    recordData.timestamp = Date.now();
+                    const docRef = await db.collection("incomes").add(recordData);
+                    recordData.id = docRef.id;
+                    incomes.push(recordData);
+                }
                 
-                document.getElementById('inc-room').value = '';
-                document.getElementById('inc-rent').value = 1200;
-                document.getElementById('inc-water').value = '';
-                document.getElementById('inc-elec-prev').value = '';
-                document.getElementById('inc-elec-curr').value = '';
-                document.getElementById('inc-total-preview').innerText = '0 ฿';
-                document.getElementById('elec-units-preview').innerText = '0';
-                autoFillBadge.classList.add('hidden');
-                document.getElementById('inc-room').focus();
+                updateUI(); 
+                cancelEditModeInc();
             } catch (err) {
                 console.error(err);
                 alert("บันทึกไม่สำเร็จ ลองใหม่อีกครั้ง");
@@ -601,21 +715,26 @@
             btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-2"></i> กำลังบันทึก...';
             btn.disabled = true;
 
-            const newRecord = {
-                timestamp: Date.now(),
+            const editId = document.getElementById('exp-edit-id').value;
+            const recordData = {
                 date: document.getElementById('exp-date').value,
                 desc: finalDesc,
                 amount: parseFloat(document.getElementById('exp-amount').value)
             };
 
             try {
-                const docRef = await db.collection("expenses").add(newRecord);
-                newRecord.id = docRef.id;
-                expenses.push(newRecord);
+                if(editId) {
+                    await db.collection("expenses").doc(editId).update(recordData);
+                    const index = expenses.findIndex(i => i.id === editId);
+                    expenses[index] = { ...expenses[index], ...recordData };
+                } else {
+                    recordData.timestamp = Date.now();
+                    const docRef = await db.collection("expenses").add(recordData);
+                    recordData.id = docRef.id;
+                    expenses.push(recordData);
+                }
                 updateUI(); 
-                this.reset();
-                expCustomInput.classList.add('hidden');
-                document.getElementById('exp-date').valueAsDate = new Date();
+                cancelEditModeExp();
             } catch(err) {
                 console.error(err);
                 alert("บันทึกไม่สำเร็จ");
@@ -702,7 +821,12 @@
                         <td class="p-4">${item.elec.toLocaleString('th-TH', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}</td>
                         <td class="p-4">${item.trash.toLocaleString('th-TH', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}</td>
                         <td class="p-4 font-bold text-indigo-600 dark:text-indigo-400">${item.total.toLocaleString('th-TH', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}</td>
-                        <td class="p-4 text-center"><button onclick="deleteIncome('${item.id}')" class="text-rose-500"><i class="fa-solid fa-trash"></i></button></td>
+                        <td class="p-4 text-center">
+                            <div class="flex items-center justify-center gap-3">
+                                <button onclick="window.editIncome('${item.id}')" class="text-amber-500 hover:text-amber-600 transition-colors" title="แก้ไขบิล"><i class="fa-solid fa-pen-to-square text-lg"></i></button>
+                                <button onclick="deleteIncome('${item.id}')" class="text-rose-500 hover:text-rose-600 transition-colors" title="ลบบิล"><i class="fa-solid fa-trash text-lg"></i></button>
+                            </div>
+                        </td>
                     </tr>`;
             });
 
@@ -718,7 +842,12 @@
                         <td class="p-4">${formatDateToDisplay(item.date)}</td>
                         <td class="p-4">${item.desc}</td>
                         <td class="p-4 text-right font-medium">${item.amount.toLocaleString('th-TH', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}</td>
-                        <td class="p-4 text-center"><button onclick="deleteExpense('${item.id}')" class="text-rose-500"><i class="fa-solid fa-trash"></i></button></td>
+                        <td class="p-4 text-center">
+                            <div class="flex items-center justify-center gap-3">
+                                <button onclick="window.editExpense('${item.id}')" class="text-amber-500 hover:text-amber-600 transition-colors" title="แก้ไขรายจ่าย"><i class="fa-solid fa-pen-to-square text-lg"></i></button>
+                                <button onclick="deleteExpense('${item.id}')" class="text-rose-500 hover:text-rose-600 transition-colors" title="ลบรายจ่าย"><i class="fa-solid fa-trash text-lg"></i></button>
+                            </div>
+                        </td>
                     </tr>`;
             });
 
